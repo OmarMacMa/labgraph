@@ -1,6 +1,6 @@
 from typing import Dict
 from icalendar import Calendar
-from main import generate_text_music
+from main import generate_text_music, generate_text_audio
 
 
 def transform_calendar_to_dict(filepath):
@@ -31,7 +31,7 @@ def transform_duration_to_minutes(duration):
     total_seconds = 60 * (int(hours) * 60 + int(minutes))
     return total_seconds
 
-events = transform_calendar_to_dict("ClassesExample.ics")
+events = transform_calendar_to_dict("daily.ics")
 
 
 print("Select a date of the calendar")
@@ -48,6 +48,8 @@ for event in events[selected_date]:
     print(f"\t\t{event['end']}")
     print(f"\t\t{event['duration']}")
     print()
-    music_duration = transform_duration_to_minutes(event['duration']) // 360
-    print([event['summary']], music_duration, None, "musicgen-small")
-    generate_text_music([event['summary']], music_duration, None, "musicgen-small")
+    music_prompt = f"Music soundtrack to {event['summary']}"
+    audios_duration = transform_duration_to_minutes(event['duration']) // 360
+    generate_text_music([music_prompt], audios_duration, f"music_{event['summary']}", "musicgen-small")
+    audio_prompt = f"Background audio of {event['summary']}"
+    generate_text_audio([audio_prompt], audios_duration, "audiogen-medium", f"audio_{event['summary']}")

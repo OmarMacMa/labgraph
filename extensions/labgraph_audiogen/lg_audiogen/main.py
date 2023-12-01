@@ -18,6 +18,11 @@ MUSICGEN_MODELS = [
     "musicgen-large"
 ]
 
+# Audiogen models supported by the lg_audiogen command
+AUDIOGEN_MODELS = [
+    "audiogen-medium"
+]
+
 
 def generate_text_music(descriptions, duration, output, musicgen_model):
     """
@@ -77,6 +82,42 @@ def generate_text_music(descriptions, duration, output, musicgen_model):
         click.secho(f"Error generating music: {music_error}", bg="red", fg="white")
 
 
+def generate_text_audio(descriptions, duration, model_name, output):
+    """
+    Load Audiocraft's AudioGen model and generate audio from the description.
+
+    @param descriptions: The parsed arguments.
+    @param duration: Duration of the generated audio.
+    @param model_name: Name of the Audiocraft AudioGen model to use.
+    @param output: Name of the output file.
+    """
+    print(f"Running lg_audiogen with descriptions: {descriptions}")
+
+    # Import MusicGen, audio_write in this function to avoid time consuming imports
+    from audiocraft.models import AudioGen
+    from audiocraft.data.audio import audio_write
+
+
+    # Load Audiocraft's AudioGen model and set generation params.
+    model = AudioGen.get_pretrained(f"facebook/{model_name}")
+    model.set_generation_params(duration=duration)
+
+    # Generate audio from the descriptions
+    wav = model.generate(descriptions)
+    batch_output = output if type(output) == str else ''
+    # Save the generated audios.
+    for idx, one_wav in enumerate(wav):
+        # Will save under {output}{idx}.wav, with loudness normalization at -14 db LUFS.
+        if not output:
+            batch_output = descriptions[idx].replace(' ', '_')
+        if type(output) == list and len(output) == len(descriptions):
+            batch_output = output[idx]
+        audio_write(f'{batch_output}{idx}', one_wav.cpu(),
+                    model.sample_rate, strategy="loudness", loudness_compressor=True)
+        click.secho(f"Audio generated and saved on the {batch_output}{idx}.wav file",
+                    bg="green", fg="black")
+
+
 @click.command()
 @click.version_option()
 @click.argument('description', nargs=-1, required=False)
@@ -129,3 +170,5 @@ def parse_arguments(description, duration, model, output, batch):
 
     if model in MUSICGEN_MODELS:
         generate_text_music(descriptions, duration, output, model)
+    elif model in AUDIOGEN_MODELS:
+        generate_text_audio(descriptions, duration, model, output)
